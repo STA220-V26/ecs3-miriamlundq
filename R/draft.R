@@ -194,3 +194,23 @@ patients[, full_name := stringr::str_replace(full_name, " ", " ")]
 
 #removes the original name columns since we don't need them anymore
 patients[, c("prefix", "first", "middle", "last", "suffix", "maiden") := NULL]
+
+
+##6
+
+#creates a new variable that gives true or false wheter the person have a drivers licence or not
+# patients[, driver := !is.na(drivers)][, drivers := NULL]
+#however the dataset already had a driver variable so I got an error message so I did not use this code line
+
+library(leaflet)
+
+#Visualizes the patient locations on a map
+leaflet::leaflet(data = patients) |>
+  leaflet::addTiles() |>
+  leaflet::addMarkers(~lon, ~lat, label = ~full_name)
+
+#Would it be reasonable to make statistical inference for the whole of USA? For the whole world?
+#Answer: no becuase the locations seems mostly to be at the same place
+#therefore it is not representative to the entire USA and not the entire world
+#the statistical inference should only be used to the sampled population
+
