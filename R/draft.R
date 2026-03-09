@@ -214,3 +214,72 @@ leaflet::leaflet(data = patients) |>
 #therefore it is not representative to the entire USA and not the entire world
 #the statistical inference should only be used to the sampled population
 
+
+##7
+# Load procedures dataset directly from the zip 
+procedures <- readr::read_csv(
+  unz("data.zip", "data-fixed/procedures.csv")
+)
+
+# Keep relevant columns and remove observations without procedure reason
+procedures <- procedures |>
+  dplyr::select(patient, reasoncode_icd10, start) |>
+  dplyr::filter(!is.na(reasoncode_icd10))
+
+# Convert to data table and set patient as key
+setDT(procedures, key = "patient")
+
+# Extract year of the procedure and remove the exact date
+procedures[, year := lubridate::year(start)][, start := NULL]
+
+# Joins patient birthdates and calculates age at procedure
+# keep adults (>=18 years) a
+proc_n_adults <-
+procedures[
+  patients[, .(id, birthdate = as.IDate(birthdate))],
+  on = c(patient = "id")
+] |>
+_[year - lubridate::year(birthdate) >= 18L, .N, .(reasoncode_icd10, year)]
+
+library(decoder)
+
+# Add descriptive labels for ICD-10 codes
+cond_by_year <- setDT(decoder::icd10se)[
+  proc_n_adults,
+  on = c(key = "reasoncode_icd10")
+]
+
+# Find the five most common procedure conditions
+top5 <- cond_by_year[, .(N = sum(N)), .(value)][order(-N)][1:5, value]
+
+# Plot procedure trends over time for the five most common conditions
+ggplot(cond_by_year[.(top5), on = "value"], aes(year, N, color = value)) +
+  geom_line() +
+  theme(legend.position = "bottom") +
+  guides(color = guide_legend(ncol = 1)) +
+  scale_color_discrete(
+    labels = function(x) stringr::str_wrap(x, width = 40)
+  )
+
+#Wath happens in the end? Is it really reasonable to include tha last year (we were looking at the assumed data extraction date earlier)
+#Answer: The last year shows a drop in procedure counts, maybe becuase of extraction before the year was over
+#so including the last year would give misleading results
+
+#What happened early in history? Do we actually have all relevant data already from the start
+#or should we focus on years which are more acurately recorded?
+#Answer: # Early years contain very few observations, might reflect incomplete
+#historical records. we should be cautious interpretating early trends
+
+
+#Does this visualisation tell us anything? Are certain conditions more common today or do we
+#need to standardize the numbers with account to population size or health seeking behaviour
+#etc.
+#Answer: Increasing counts over time may reflect population growth, improved
+# diagnostics, or increased healthcare utilization rather than true
+# increases in disease prevalence.
+
+
+#Are patients sicker today or do they get more treatment for conditions which might have been
+#undertreated in the past
+#Answer: not necessarily, it may reflect improved diagnosis, expanded treatment options,
+# or greater access to healthcare services
