@@ -153,8 +153,44 @@ library(duckplyr)
 # unzip 
 unzip("data.zip", files = "data-fixed/payer_transitions.csv")
 
-# finding the latest start_date
+# finding the latest start_date to estimate the dataset snapshot
 lastdate <- readr::read_csv("data-fixed/payer_transitions.csv") |>
   summarise(lastdate = max(start_date)) |>
   pull(lastdate)
 
+lastdate
+
+# calculate age at time of dataset snapshot
+patients[, age_extract := as.integer((as.IDate(lastdate) - birthdate)) %/% 365.241]
+
+# histogram of living patients' age at snapshot time
+patients[is.na(deathdate), hist(age_extract)]
+
+
+##5
+# Replace missing values in prefix and middle name with empty strings
+# so they do not appear as "NA" when constructing full names
+patients[,
+names(.SD) := lapply(.SD, \(x) replace_na(x, "")),
+.SDcols = c("prefix", "middle")
+]
+# Combine name components into a single full name variable
+patients[,
+full_name := paste(
+prefix,
+first,
+middle,
+last,
+fifelse(!suffix %in% c("", NA), paste0(", ", suffix), "") ## Adds suffix only when it exists
+)
+]
+patients[, full_name]
+
+#removes preciding and following whitespaces
+patients[, names(.SD) := lapply(.SD, trimws), .SDcols = is.character]
+
+#takes away double spaces
+patients[, full_name := stringr::str_replace(full_name, " ", " ")]
+
+#removes the original name columns since we don't need them anymore
+patients[, c("prefix", "first", "middle", "last", "suffix", "maiden") := NULL]
