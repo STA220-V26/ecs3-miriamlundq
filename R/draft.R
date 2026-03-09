@@ -79,3 +79,49 @@ checks
 
 #creates an report with the data quality problems, so what checks passed and failed
 export_report(checks, "patient_validation.html")
+
+
+##3.1
+
+#counts how many observations there is en each martial category
+patients[, .N, marital] # Run it!
+
+#it puts labels on the letters so they become more readable 
+#so for example S becomes Single
+patients[,
+marital := factor(
+marital,
+levels = c("S", "M", "D", "W"),
+labels = c("Single", "Married", "Divorced", "Widowed")
+)
+]
+
+#doing the same for gender
+patients[, .N, gender]
+patients[,
+  gender := factor(
+    gender,
+    levels = c("M", "F"),
+    labels = c("Male", "Female")
+  )
+]
+
+#we find character columns with fewer than 10 unique values
+#this is becuase thet are more likely to be variables that could be converted into factors
+fctr_candidates <-
+patients[, which(lapply(.SD, uniqueN) < 10), .SDcols = is.character] |>
+names()
+#this shows the uniques values for each of those variables
+#this makes it easy to see and decude if the variable should be a factor
+patients[,
+lapply(.SD, \(x) paste(unique(x), collapse = ", ")),
+.SDcols = fctr_candidates
+] |>
+glimpse()
+
+# This converts categorical variables with a small number of unique values to factors
+# makes them easier to interpret 
+patients[,
+names(.SD) := lapply(.SD, as.factor),
+.SDcols = c("prefix", "suffix", "race", "ethnicity", "state")
+]
