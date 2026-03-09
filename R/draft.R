@@ -125,3 +125,36 @@ patients[,
 names(.SD) := lapply(.SD, as.factor),
 .SDcols = c("prefix", "suffix", "race", "ethnicity", "state")
 ]
+
+
+##3.2
+
+#counts how many individuals exists for each combination of gender, race and state
+patients[, .N, .(gender, race, state)][order(N)]
+
+#combines rare race catgories into other to reduce the very small groups
+#this is becuase small groups could potentially identify bias
+#0.05 means those groups representing less then 5% of the data will be combined
+patients[, race := forcats::fct_lump_prop(race, prop = 0.05)]
+
+
+##4 
+
+# Calculates each patient's age in years based on todays date
+patients[, age := as.integer((as.IDate(Sys.Date()) - birthdate)) %/% 365.241]
+# a histogram for the age distribution
+patients[, hist(age)]
+
+#filters out the people who died, histogram plot
+patients[is.na(deathdate), hist(age)]
+
+library(duckplyr)
+
+# unzip 
+unzip("data.zip", files = "data-fixed/payer_transitions.csv")
+
+# finding the latest start_date
+lastdate <- readr::read_csv("data-fixed/payer_transitions.csv") |>
+  summarise(lastdate = max(start_date)) |>
+  pull(lastdate)
+
